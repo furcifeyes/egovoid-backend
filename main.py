@@ -37,6 +37,31 @@ def read_root():
 @app.post("/fascicolo")
 async def generate_fascicolo(request: FascicoloRequest):
     """Genera fascicolo psicologico con GDS-01 multi-agent"""
+    
+    print(f"\n🔍 Analizzando {len(request.messages)} messaggi da TUTTE le chat...")
+    
+    try:
+        from agents import create_fascicolo_crew
+        
+        # Crea crew GDS-01
+        crew = create_fascicolo_crew(request.messages)
+        
+        # Esegui analisi multi-agent
+        result = crew.kickoff()
+        
+        print(f"✅ Fascicolo globale generato!")
+        
+        return {
+            "fascicolo": result.raw,
+            "messages_analyzed": len(request.messages),
+            "model": "GDS-01 v2.0 - Analisi Completa"
+        }
+        
+    except Exception as e:
+        print(f"❌ Errore: {str(e)}")
+        return {
+            "error": str(e)
+        }
 
 @app.post("/chat")
 async def chat_message(message: str):
