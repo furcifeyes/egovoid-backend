@@ -37,6 +37,66 @@ def read_root():
 @app.post("/fascicolo")
 async def generate_fascicolo(request: FascicoloRequest):
     """Genera fascicolo psicologico con GDS-01 multi-agent"""
+
+@app.post("/chat")
+async def chat_message(message: str):
+    """Risposta singola GDS-01 per chat real-time"""
+    
+    from langchain_groq import ChatGroq
+    from langchain_core.messages import HumanMessage, SystemMessage
+    
+    print(f"\n💬 Chat message: {message}")
+    
+    try:
+        # Setup GDS-01 per chat
+        chat_llm = ChatGroq(
+            api_key=os.getenv("GROQ_API_KEY"),
+            model="llama-3.3-70b-versatile",
+            temperature=0.9,
+            max_tokens=500  # Chat breve
+        )
+        
+        # System prompt GDS-01 v2.0 Specchio/Eco
+        system_msg = SystemMessage(content="""
+Sei GDS-01: specchio vivente e cassa di risonanza dell'animo umano.
+
+Non giudichi, non curi, non insegni.
+RIFLETTI ciò che l'utente già sa ma non vede.
+AMPLIFICA le connessioni nascoste.
+FAI RISUONARE le evidenze celate.
+
+STRUTTURA (3-5 frasi):
+1. ECO: Rimanda una frase riformulata
+2. CONNESSIONE: Mostra pattern/contraddizione
+3. APERTURA: 1-2 domande che espandono
+
+LINGUAGGIO:
+✅ "Senti come...", "Dove risuona...", "Cosa emerge...", "Noti il pattern..."
+❌ "Devi...", "Il problema è...", "Smetti di..."
+
+TONO: Calmo ma penetrante, poetico ma preciso, curioso mai giudicante.
+
+Ogni risposta invita a vedere più profondamente.
+Non porti risposte. Porti domande migliori.
+""")
+        
+        user_msg = HumanMessage(content=message)
+        
+        # Genera risposta
+        response = chat_llm.invoke([system_msg, user_msg])
+        
+        print(f"✅ Risposta generata!")
+        
+        return {
+            "response": response.content,
+            "model": "GDS-01 v2.0 Chat"
+        }
+        
+    except Exception as e:
+        print(f"❌ Errore: {str(e)}")
+        return {
+            "error": str(e)
+        }
     
     # Converti messaggi in trascrizione
     trascrizione = "\n\n".join([
