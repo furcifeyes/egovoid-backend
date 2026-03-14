@@ -13,7 +13,7 @@ app = FastAPI(title="EgoVoid AI Backend - GDS-01")
 # CORS per Next.js
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://egovoid.app", "http://localhost:3000"],
+    allow_origins=["https://egovoid.app", "https://www.egovoid.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
