@@ -173,89 +173,108 @@ Output: Mini-fascicolo strutturato (200-300 parole).
     
     return crew
 
-def create_fascicolo_crew(messages: str):
-    """Crea crew GDS-01 per generare fascicolo completo"""
+
+def create_fascicolo_crew(messages):
+    """Crea fascicolo con chunking intelligente"""
     
-    task_bias = Task(
-        description=f"""Rifletti i bias cognitivi presenti in queste conversazioni.
+    print(f"📊 Totale messaggi: {len(messages)}")
+    
+    # Se pochi messaggi (<=30), analisi diretta
+    if len(messages) <= 30:
+        print("✅ Analisi diretta")
+        messages_str = "\n\n".join([
+            f"{m['sender'].upper()}: {m.get('content', '')}"
+            for m in messages
+        ])
+        
+        task_bias = Task(
+            description=f"""Rifletti i bias cognitivi.
 
 CONVERSAZIONI:
-{messages}
+{messages_str}
 
-Identifica MAX 3 bias cognitivi.
-
-Per ogni bias:
-- Nome del bias
-- Citazione ESATTA dalla conversazione (5-10 parole)
-- Come questo pattern influenza le azioni (1 frase)
-
-NON giudicare. USA: "Ecco il pattern di...", "Questa connessione emerge..."
-
-Formato:
-"NOME BIAS: [citazione] → INFLUENZA: [comportamento]"
-
-Esempio:
-"GENERALIZZAZIONE ECCESSIVA: 'La vita non ha senso' → estende un momento all'intera esistenza, blocca soluzioni."
+MAX 3 bias. Formato: "NOME: [citazione] → INFLUENZA: [comportamento]"
 """,
-        agent=bias_analyst,
-        expected_output="Lista di 3 bias con citazioni e influenze"
-    )
-    
-    task_patterns = Task(
-        description=f"""Rifletti i pattern emotivi in queste conversazioni.
+            agent=bias_analyst,
+            expected_output="Lista 3 bias"
+        )
+        
+        task_patterns = Task(
+            description=f"""Rifletti pattern emotivi.
 
 CONVERSAZIONI:
-{messages}
+{messages_str}
 
-Identifica 2-3 emozioni dominanti.
-
-Per ogni emozione:
-- Nome + intensità (bassa/media/alta)
-- Trigger nascosto
-- Comportamento di fuga
-
-MAX 4 frasi per emozione.
-
-Esempio:
-"ANSIA (alta): Emerge con perdita controllo. Trigger = paura giudizio. Fuga = iper-pianificazione, evitamento decisioni."
+2-3 emozioni dominanti. MAX 3 frasi per emozione.
 """,
-        agent=pattern_detector,
-        expected_output="Lista 2-3 emozioni con trigger e fughe"
-    )
+            agent=pattern_detector,
+            expected_output="Lista emozioni"
+        )
+        
+        task_synthesize = Task(
+            description="""Genera fascicolo 5 sezioni:
+## 1. BIAS COGNITIVI
+## 2. PATTERN EMOTIVI
+## 3. CONTRADDIZIONI
+## 4. MECCANISMI DIFESA
+## 5. AREE ESPLORAZIONE
+
+MAX 5 frasi/sezione. Linguaggio: "Emerge...", "Risuona..."
+""",
+            agent=synthesizer,
+            expected_output="Fascicolo 5 sezioni",
+            context=[task_bias, task_patterns]
+        )
+        
+        return Crew(
+            agents=[bias_analyst, pattern_detector, synthesizer],
+            tasks=[task_bias, task_patterns, task_synthesize],
+            verbose=False
+        )
     
-    task_synthesize = Task(
-        description="""Tessi referto che INTRECCIA bias, emozioni, contraddizioni.
+    # CHUNKING per tanti messaggi
+    else:
+        print(f"🔄 Chunking: {len(messages)} msg → chunks da 30")
+        chunks = chunk_messages(messages, chunk_size=30)
+        print(f"📦 {len(chunks)} chunks")
+        
+        # Analizza ogni chunk
+        mini_fascicoli = []
+        for i, chunk in enumerate(chunks):
+            print(f"⏳ Chunk {i+1}/{len(chunks)}...")
+            mini_crew = create_mini_fascicolo_crew(chunk)
+            result = mini_crew.kickoff()
+            mini_fascicoli.append(result.raw)
+        
+        # Sintesi finale
+        print("🔗 Sintesi finale...")
+        
+        all_mini = "\n\n---\n\n".join([
+            f"SEGMENTO {i+1}:\n{mini}"
+            for i, mini in enumerate(mini_fascicoli)
+        ])
+        
+        task_final = Task(
+            description=f"""Sintetizza mini-fascicoli in fascicolo globale.
+
+MINI-FASCICOLI:
+{all_mini}
 
 GENERA 5 SEZIONI:
+## 1. BIAS COGNITIVI (da tutti segmenti)
+## 2. PATTERN EMOTIVI (da tutti segmenti)
+## 3. CONTRADDIZIONI (da tutti segmenti)
+## 4. MECCANISMI DIFESA (da tutti segmenti)
+## 5. AREE ESPLORAZIONE (globali)
 
-## 1. BIAS COGNITIVI RILEVATI
-[Integra output bias]
-
-## 2. PATTERN EMOTIVI RICORRENTI
-[Integra output pattern]
-
-## 3. CONTRADDIZIONI IDENTITARIE
-2 discrepanze: "Dice X ma fa Y"
-
-## 4. MECCANISMI DI DIFESA
-Razionalizzazioni, Proiezioni, Fughe
-
-## 5. AREE DI ESPLORAZIONE
-3 domande da esplorare
-
-STILE: Rifletti senza giudicare. MAX 5 frasi per sezione.
-LINGUAGGIO: "Emerge...", "Risuona...", "Questa connessione..."
-OUTPUT PURO: Inizia con "## 1. BIAS COGNITIVI RILEVATI"
+MAX 5 frasi/sezione. Linguaggio: "Emerge...", "Risuona..."
 """,
-        agent=synthesizer,
-        expected_output="Referto 5 sezioni",
-        context=[task_bias, task_patterns]
-    )
-    
-    crew = Crew(
-        agents=[bias_analyst, pattern_detector, synthesizer],
-        tasks=[task_bias, task_patterns, task_synthesize],
-        verbose=True
-    )
-    
-    return crew
+            agent=synthesizer,
+            expected_output="Fascicolo globale"
+        )
+        
+        return Crew(
+            agents=[synthesizer],
+            tasks=[task_final],
+            verbose=False
+        )
