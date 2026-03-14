@@ -170,54 +170,64 @@ Output: Mini-fascicolo strutturato (200-300 parole).
         tasks=[task_bias, task_pattern, task_synthesis],
         verbose=False
     )
+    
+    return crew
 
-def create_fascicolo_crew(messages):
-    """Crea fascicolo con chunking intelligente per gestire grandi volumi"""
+def create_fascicolo_crew(messages: str):
+    """Crea crew GDS-01 per generare fascicolo completo"""
     
-    print(f"📊 Totale messaggi: {len(messages)}")
-    
-    # Se pochi messaggi, analisi diretta
-    if len(messages) <= 40:
-        print("✅ Analisi diretta (pochi messaggi)")
-        messages_str = "\n\n".join([
-            f"{m.get("sender", "unknown").upper()}: {m.get("content", "")}"
-            for m in messages
-        ])
-        
-        # Usa crew originale per analisi completa
-        task_bias = Task(
-            description=f"""Rifletti i bias cognitivi presenti in queste conversazioni.
+    task_bias = Task(
+        description=f"""Rifletti i bias cognitivi presenti in queste conversazioni.
 
 CONVERSAZIONI:
-{messages_str}
+{messages}
 
 Identifica MAX 3 bias cognitivi.
-Per ogni bias: Nome, Citazione ESATTA (5-10 parole), Come influenza le azioni (1 frase).
 
-Formato: "NOME BIAS: [citazione] → INFLUENZA: [comportamento]"
+Per ogni bias:
+- Nome del bias
+- Citazione ESATTA dalla conversazione (5-10 parole)
+- Come questo pattern influenza le azioni (1 frase)
+
+NON giudicare. USA: "Ecco il pattern di...", "Questa connessione emerge..."
+
+Formato:
+"NOME BIAS: [citazione] → INFLUENZA: [comportamento]"
+
+Esempio:
+"GENERALIZZAZIONE ECCESSIVA: 'La vita non ha senso' → estende un momento all'intera esistenza, blocca soluzioni."
 """,
-            agent=bias_analyst,
-            expected_output="Lista di 3 bias con citazioni e influenze"
-        )
-        
-        task_patterns = Task(
-            description=f"""Rifletti i pattern emotivi in queste conversazioni.
+        agent=bias_analyst,
+        expected_output="Lista di 3 bias con citazioni e influenze"
+    )
+    
+    task_patterns = Task(
+        description=f"""Rifletti i pattern emotivi in queste conversazioni.
 
 CONVERSAZIONI:
-{messages_str}
+{messages}
 
 Identifica 2-3 emozioni dominanti.
-Per ogni emozione: Nome + intensità (bassa/media/alta), Trigger nascosto, Comportamento di fuga.
+
+Per ogni emozione:
+- Nome + intensità (bassa/media/alta)
+- Trigger nascosto
+- Comportamento di fuga
+
 MAX 4 frasi per emozione.
+
+Esempio:
+"ANSIA (alta): Emerge con perdita controllo. Trigger = paura giudizio. Fuga = iper-pianificazione, evitamento decisioni."
 """,
-            agent=pattern_detector,
-            expected_output="Lista 2-3 emozioni con trigger e fughe"
-        )
-        
-        task_synthesize = Task(
-            description="""Tessi referto che INTRECCIA bias, emozioni, contraddizioni.
+        agent=pattern_detector,
+        expected_output="Lista 2-3 emozioni con trigger e fughe"
+    )
+    
+    task_synthesize = Task(
+        description="""Tessi referto che INTRECCIA bias, emozioni, contraddizioni.
 
 GENERA 5 SEZIONI:
+
 ## 1. BIAS COGNITIVI RILEVATI
 [Integra output bias]
 
@@ -237,67 +247,15 @@ STILE: Rifletti senza giudicare. MAX 5 frasi per sezione.
 LINGUAGGIO: "Emerge...", "Risuona...", "Questa connessione..."
 OUTPUT PURO: Inizia con "## 1. BIAS COGNITIVI RILEVATI"
 """,
-            agent=synthesizer,
-            expected_output="Referto 5 sezioni",
-            context=[task_bias, task_patterns]
-        )
-        
-        crew = Crew(
-            agents=[bias_analyst, pattern_detector, synthesizer],
-            tasks=[task_bias, task_patterns, task_synthesize],
-            verbose=False
-        )
-        
-        return crew
+        agent=synthesizer,
+        expected_output="Referto 5 sezioni",
+        context=[task_bias, task_patterns]
+    )
     
-    # CHUNKING per tanti messaggi
-    else:
-        print(f"🔄 Chunking attivo: divido in segmenti da 40 messaggi")
-        chunks = chunk_messages(messages, chunk_size=40)
-        print(f"📦 Creati {len(chunks)} chunks")
-        
-        # Analizza ogni chunk
-        mini_fascicoli = []
-        for i, chunk in enumerate(chunks):
-            print(f"⏳ Chunk {i+1}/{len(chunks)}...")
-            mini_crew = create_mini_fascicolo_crew(chunk)
-            result = mini_crew.kickoff()
-            mini_fascicoli.append(result.raw)
-        
-        # Sintesi finale
-        print("🔗 Sintesi finale di tutti i chunks...")
-        
-        all_mini = "\n\n---\n\n".join([
-            f"SEGMENTO {i+1}:\n{mini}" 
-            for i, mini in enumerate(mini_fascicoli)
-        ])
-        
-        task_final = Task(
-            description=f"""Sintetizza TUTTI i mini-fascicoli in UN fascicolo globale.
-
-MINI-FASCICOLI:
-{all_mini}
-
-GENERA 5 SEZIONI:
-## 1. BIAS COGNITIVI RILEVATI (da tutti i segmenti)
-## 2. PATTERN EMOTIVI RICORRENTI (da tutti i segmenti)
-## 3. CONTRADDIZIONI IDENTITARIE (da tutti i segmenti)
-## 4. MECCANISMI DI DIFESA (da tutti i segmenti)
-## 5. AREE DI ESPLORAZIONE (sintetiche, globali)
-
-STILE: Rifletti senza giudicare. MAX 5 frasi per sezione.
-LINGUAGGIO: "Emerge...", "Risuona...", "Questa connessione..."
-OUTPUT PURO: Inizia con "## 1. BIAS COGNITIVI RILEVATI"
-""",
-            agent=synthesizer,
-            expected_output="Fascicolo globale sintetizzato"
-        )
-        
-        final_crew = Crew(
-            agents=[synthesizer],
-            tasks=[task_final],
-            verbose=False
-        )
-        
-        return final_crew
-
+    crew = Crew(
+        agents=[bias_analyst, pattern_detector, synthesizer],
+        tasks=[task_bias, task_patterns, task_synthesize],
+        verbose=True
+    )
+    
+    return crew

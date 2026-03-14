@@ -38,13 +38,16 @@ def read_root():
 async def generate_fascicolo(request: FascicoloRequest):
     """Genera fascicolo psicologico con GDS-01 multi-agent"""
     
-    print(f"\n🔍 Analizzando {len(request.messages)} messaggi da TUTTE le chat...")
+    # Converti Pydantic models in dict
+    messages_dict = [{"sender": m.sender, "content": m.content} for m in request.messages]
+    
+    print(f"\n🔍 Analizzando {len(messages_dict)} messaggi da TUTTE le chat...")
     
     try:
         from agents import create_fascicolo_crew
         
-        # Crea crew GDS-01
-        crew = create_fascicolo_crew(request.messages)
+        # Passa dict invece di Pydantic models
+        crew = create_fascicolo_crew(messages_dict)
         
         # Esegui analisi multi-agent
         result = crew.kickoff()
