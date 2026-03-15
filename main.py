@@ -143,6 +143,35 @@ async def genera_profilo(request: ProfiloRequest):
         print(f"❌ Errore profilo: {str(e)}")
         return {"error": str(e), "profilo": None}
 
+@app.post("/crea-pagamento")
+async def crea_pagamento():
+    """Crea sessione di pagamento Stripe per PDF fascicolo — €2"""
+    import stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+    
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": "Fascicolo PDF — EgoVoid",
+                        "description": "Il tuo fascicolo psicologico in formato PDF scaricabile."
+                    },
+                    "unit_amount": 200,  # €2.00 in centesimi
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url="https://egovoid.app?pagamento=successo",
+            cancel_url="https://egovoid.app?pagamento=annullato",
+        )
+        return {"url": session.url, "session_id": session.id}
+    except Exception as e:
+        print(f"❌ Errore Stripe: {str(e)}")
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
