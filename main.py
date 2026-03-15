@@ -143,6 +143,29 @@ async def genera_profilo(request: ProfiloRequest):
         print(f"❌ Errore profilo: {str(e)}")
         return {"error": str(e), "profilo": None}
 
+@app.get("/verifica-custode")
+async def verifica_custode(user_id: str):
+    """Verifica se l'utente è Custode"""
+    from supabase import create_client
+    
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+    
+    if not supabase_url or not supabase_key:
+        return {"is_custode": False, "error": "Supabase non configurato"}
+    
+    try:
+        client = create_client(supabase_url, supabase_key)
+        result = client.table("profiles").select("is_custode").eq("user_id", user_id).single().execute()
+        
+        if result.data:
+            return {"is_custode": result.data["is_custode"]}
+        else:
+            return {"is_custode": False}
+    except Exception as e:
+        print(f"❌ Errore verifica custode: {str(e)}")
+        return {"is_custode": False}
+
 @app.post("/crea-pagamento")
 async def crea_pagamento():
     """Crea sessione di pagamento Stripe per PDF fascicolo — €2"""
