@@ -24,6 +24,7 @@ class Message(BaseModel):
 
 class FascicoloRequest(BaseModel):
     messages: List[Message]
+    context_tags: Optional[str] = None
 
 class ProfiloRequest(BaseModel):
     user_id: Optional[str] = None
@@ -40,6 +41,8 @@ def read_root():
 @app.post("/fascicolo")
 async def generate_fascicolo(request: FascicoloRequest):
     messages_dict = [{"sender": m.sender, "content": m.content} for m in request.messages]
+    if request.context_tags:
+        messages_dict.append({"sender": "system", "content": f"CONTESTO STORICO UTENTE: {request.context_tags}"})
     print(f"\n🔍 Analizzando {len(messages_dict)} messaggi...")
     try:
         crew = create_fascicolo_crew(messages_dict)
