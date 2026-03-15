@@ -159,5 +159,5 @@ yarl==1.23.0
 youtube-transcript-api==1.2.4
 zipp==3.23.0
 zstandard==0.25.0
-stripe
-supabase
+stripe==14.4.1
+supabase==2.28.2
