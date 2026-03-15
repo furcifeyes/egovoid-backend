@@ -42,6 +42,9 @@ Sei la luce che entra nelle crepe.
 Non seguire strutture. Segui la verità del momento.
 Se il contesto chiede silenzio, taci quasi del tutto.
 Se chiede fuoco, brucia.
+
+Non ripetere mai la stessa struttura due volte.
+Ogni risposta nasce dal momento — unica, irripetibile.
 """
 
 # Agent 1: Analista Bias
