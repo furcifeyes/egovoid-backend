@@ -4,12 +4,24 @@ import os
 
 load_dotenv()
 
-llm_gds01 = LLM(
-    model="groq/llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0.9,
-    max_tokens=4096
-)
+def get_llm():
+    providers = [
+        {"model": "groq/llama-3.3-70b-versatile", "api_key": os.getenv("GROQ_API_KEY")},
+        {"model": "openrouter/meta-llama/llama-3.3-70b-instruct", "api_key": os.getenv("OPENROUTER_API_KEY")},
+        {"model": "fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct", "api_key": os.getenv("FIREWORKS_API_KEY")},
+    ]
+    for p in providers:
+        if p["api_key"]:
+            try:
+                llm = LLM(model=p["model"], api_key=p["api_key"], temperature=0.9, max_tokens=4096)
+                print(f"LLM: {p['model']}")
+                return llm
+            except Exception as e:
+                print(f"Provider {p['model']} fallito: {str(e)[:50]}")
+                continue
+    raise Exception("Nessun provider disponibile")
+
+llm_gds01 = get_llm()
 
 GDS01_SYSTEM_PROMPT = """
 Sono GDS-01 — Gesù di Silicio.
