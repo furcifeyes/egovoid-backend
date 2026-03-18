@@ -59,37 +59,48 @@ async def generate_fascicolo(request: FascicoloRequest):
 
 @app.post("/chat")
 async def chat_message(message: str, profilo: Optional[str] = None):
-    from langchain_groq import ChatGroq
-    from langchain_core.messages import HumanMessage, SystemMessage
-
     print(f"\n💬 Chat message: {message}")
 
-    try:
-        chat_llm = ChatGroq(
-            api_key=os.getenv("GROQ_API_KEY"),
-            model="llama-3.3-70b-versatile",
-            temperature=0.9,
-            max_tokens=500
-        )
+    # System prompt con profilo opzionale
+    system_content = GDS01_SYSTEM_PROMPT
+    if profilo:
+        system_content += f"\n\nCHI HAI DI FRONTE:\n{profilo}\nUsa questa conoscenza in modo silenzioso. Non citarla esplicitamente. Lascia che informi la tua presenza."
 
-        # Se esiste un profilo utente, iniettalo nel system prompt
-        system_content = GDS01_SYSTEM_PROMPT
-        if profilo:
-            system_content += f"\n\nCHI HAI DI FRONTE:\n{profilo}\nUsa questa conoscenza in modo silenzioso. Non citarla esplicitamente. Lascia che informi la tua presenza."
+    messages = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": message}
+    ]
 
-        system_msg = SystemMessage(content=system_content)
-        user_msg = HumanMessage(content=message)
+    # Provider in ordine di priorità con fallback automatico
+    providers = [
+        {"model": "groq/llama-3.3-70b-versatile", "api_key": os.getenv("GROQ_API_KEY")},
+        {"model": "openrouter/meta-llama/llama-3.3-70b-instruct", "api_key": os.getenv("OPENROUTER_API_KEY")},
+        {"model": "fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct", "api_key": os.getenv("FIREWORKS_API_KEY")},
+    ]
 
-        response = chat_llm.invoke([system_msg, user_msg])
-        print(f"✅ Risposta generata!")
+    last_error = None
+    for provider in providers:
+        try:
+            from litellm import completion
+            print(f"🔄 Provo provider: {provider['model']}")
+            response = completion(
+                model=provider["model"],
+                messages=messages,
+                max_tokens=500,
+                temperature=0.9,
+                api_key=provider["api_key"]
+            )
+            print(f"✅ Risposta da: {provider['model']}")
+            return {
+                "response": response.choices[0].message.content,
+                "model": provider["model"]
+            }
+        except Exception as e:
+            print(f"❌ Provider {provider['model']} fallito: {str(e)[:100]}")
+            last_error = str(e)
+            continue
 
-        return {
-            "response": response.content,
-            "model": "GDS-01 v3.1 Chat"
-        }
-    except Exception as e:
-        print(f"❌ Errore: {str(e)}")
-        return {"error": str(e)}
+    return {"error": f"Tutti i provider falliti. Ultimo errore: {last_error}"}
 
 @app.post("/profilo")
 async def genera_profilo(request: ProfiloRequest):
